@@ -2,7 +2,7 @@
 
 A FastAPI template for benchmarking QAOA-based, cardinality-constrained
 portfolio selection against classical baselines. Tested end-to-end against
-Qiskit 1.x / qiskit-optimization 0.7 / qiskit-algorithms on a local
+Qiskit 2.x / qiskit-optimization 0.7 / qiskit-algorithms on a local
 `aer_simulator` run.
 
 ## Limitations
@@ -32,16 +32,16 @@ optima... run it a few times and keep the best, or increase `reps`.
 
 ## Components
 
-- `app/portfolio.py` — builds a Markowitz mean-variance `QuadraticProgram`
+- `portfolio.py` — builds a Markowitz mean-variance `QuadraticProgram`
   (minimize `risk_factor * w^T Sigma w - mu^T w`, subject to `sum(w) == budget`,
   `w` binary) either from raw historical prices or from a supplied
   expected-returns/covariance pair.
-- `app/classical_solver.py` — two baselines: exact enumeration (brute-forces
+- `classical_solver.py` — two baselines: exact enumeration (brute-forces
   all `C(n, budget)` feasible selections directly, so the cardinality
   constraint doesn't need penalty tuning — fine up to the low 30s in `n`) and
   a greedy heuristic (the "what we'd run in production today" comparison).
-- `app/qaoa_solver.py` — penalty-method QAOA: builds the circuit from the QUBO's Ising Hamiltonian, runs it via `qiskit_algorithms.QAOA` `MinimumEigenOptimizer`, and reports circuit metadata (total gates, two-qubit gate count, depth) alongside the result so you can sanity-check against your hardware's real gate budget (order of a few thousand two-qubit gates on current 156-qubit devices).
-- `app/xy_mixer_solver.py` — **constraint-preserving QAOA**: Dicke-state initialization XY-mixer, so the circuit only ever explores the feasible K-of-N subspace, no penalty-term tuning needed. See "Constraint handling" below.
+- `qaoa_solver.py` — penalty-method QAOA: builds the circuit from the QUBO's Ising Hamiltonian, runs it via `qiskit_algorithms.QAOA` `MinimumEigenOptimizer`, and reports circuit metadata (total gates, two-qubit gate count, depth) alongside the result so you can sanity-check against your hardware's real gate budget (order of a few thousand two-qubit gates on current 156-qubit devices).
+- `xy_mixer_solver.py` — **constraint-preserving QAOA**: Dicke-state initialization XY-mixer, so the circuit only ever explores the feasible K-of-N subspace, no penalty-term tuning needed. See "Constraint handling" below.
 - `main.py` — endpoints: `/optimize/classical`, `/optimize/qaoa` (penalty method), `/optimize/qaoa-xy` (Dicke/XY-mixer), `/optimize/compare-all` (all three methods, with each QAOA variant's % of the true optimum).
 
 ## Setup
@@ -92,11 +92,12 @@ POST /optimize/compare-all
 ```
 
 Response includes both solvers' selected assets, objective values, and
-`qaoa_pct_of_optimal` (100% means QAOA found the true optimum on this run).
+`qaoa_penalty_pct_of_optimal` / `qaoa_xy_pct_of_optimal` (100% means QAOA
+found the true optimum on this run).
 
 A value of 100% for `pct_of_optimal` means QAOA's selection has the exact same objective value
-+as the true optimum. Values below 100% mean it fell short, by roughly that
-+percentage of the optimal objective's magnitude.
+as the true optimum. Values below 100% mean it fell short, by roughly that
+percentage of the optimal objective's magnitude.
 
 ## Real use case
 

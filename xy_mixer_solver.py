@@ -39,7 +39,7 @@ def build_dicke_circuit(n: int, k: int) -> QuantumCircuit:
             theta = 2 * math.asin(math.sqrt(min(p, 1.0)))
             if abs(theta) < 1e-12:
                 continue
-            gate = RYGate(theta).control(num_ctrl_qubits=m, ctrl_state=c)
+            gate = RYGate(theta).control(num_ctrl_qubits=m, ctrl_state=c, annotated=False)
             qc.append(gate, list(anc) + [data[i]])
 
         # controlled increment of the count register if data[i] == 1
