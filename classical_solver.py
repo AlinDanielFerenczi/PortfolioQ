@@ -23,6 +23,8 @@ def solve_classical_exact(
     swap in Gurobi/CPLEX (drop-in replacement for this function).
     """
     n = len(tickers)
+    if budget < 1 or budget > n:
+        raise ValueError("budget must be between 1 and the number of tickers")
     mu = np.array(expected_returns)
     sigma = np.array(covariances)
 
@@ -54,6 +56,8 @@ def solve_classical_greedy(
     scale past a few dozen assets.
     """
     n = len(tickers)
+    if budget < 1 or budget > n:
+        raise ValueError("budget must be between 1 and the number of tickers")
     mu = np.array(expected_returns)
     sigma = np.array(covariances)
 

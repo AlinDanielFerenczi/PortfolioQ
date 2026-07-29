@@ -13,10 +13,27 @@ class OptimizeRequest(BaseModel):
     covariances: Optional[List[List[float]]] = Field(
         None, description="Covariance matrix, same order as tickers"
     )
+    lookback_days: int = Field(
+        30,
+        description=(
+            "If neither `prices` nor `expected_returns`/`covariances` are given, "
+            "fetch this many days of daily closes from yfinance for `tickers` instead."
+        ),
+    )
     budget: int = Field(..., description="Number of assets to select (cardinality constraint K)")
     risk_factor: float = Field(0.5, description="Risk aversion weight (higher = more risk-averse)")
     reps: int = Field(1, description="Number of QAOA layers (p)")
     shots: int = Field(1024, description="Number of measurement shots for QAOA sampling")
+    maxiter: int = Field(
+        100,
+        description=(
+            "Max COBYLA iterations. Each iteration submits a job to `backend`, so on "
+            "real hardware this is roughly the number of hardware round-trips the "
+            "request will block on. Keep this low (e.g. 3-5) for an initial timing "
+            "check before scaling up, or use the /submit + /jobs/{id} endpoints "
+            "instead of blocking the request."
+        ),
+    )
     backend: str = Field(
         "aer_simulator",
         description="'aer_simulator' for noiseless sim, or an IBM Quantum backend name for real hardware",
@@ -40,3 +57,18 @@ class CompareAllResponse(BaseModel):
     qaoa_xy_mixer: OptimizeResult
     qaoa_penalty_pct_of_optimal: Optional[float] = None
     qaoa_xy_pct_of_optimal: Optional[float] = None
+
+
+class JobSubmitted(BaseModel):
+    job_id: str
+    status: str
+
+
+class JobStatus(BaseModel):
+    job_id: str
+    method: str
+    status: str
+    submitted_at: str
+    completed_at: Optional[str] = None
+    result: Optional[Dict] = None
+    error: Optional[str] = None

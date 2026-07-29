@@ -40,7 +40,7 @@ def _get_sampler(backend_name: str, shots: int):
             "noiseless baseline."
         )
     service = QiskitRuntimeService(
-        channel="ibm_quantum", token=IBM_QUANTUM_TOKEN, instance=IBM_QUANTUM_INSTANCE
+        channel="ibm_quantum_platform", token=IBM_QUANTUM_TOKEN, instance=IBM_QUANTUM_INSTANCE
     )
     backend = service.backend(backend_name)
     raw_sampler = SamplerV2(mode=backend)
@@ -66,14 +66,29 @@ def _estimate_gate_counts(qubo, reps: int, backend=None):
     }
 
 
-def solve_qaoa(qp, tickers: list, reps: int = 1, shots: int = 1024, backend_name: str = "aer_simulator"):
+def solve_qaoa(
+    qp,
+    tickers: list,
+    reps: int = 1,
+    shots: int = 1024,
+    backend_name: str = "aer_simulator",
+    maxiter: int = 100,
+):
+    min_maxiter = 2 * reps + 2
+    if maxiter < min_maxiter:
+        raise ValueError(
+            f"maxiter={maxiter} is too low for reps={reps}: COBYLA needs at least "
+            f"2*reps + 2 = {min_maxiter} function evaluations just to build its "
+            "initial simplex before it can optimize anything."
+        )
+
     converter = QuadraticProgramToQubo()
     qubo = converter.convert(qp)
 
     sampler, backend = _get_sampler(backend_name, shots)
     gate_info = _estimate_gate_counts(qubo, reps, backend)
 
-    qaoa = QAOA(sampler=sampler, optimizer=COBYLA(maxiter=100), reps=reps)
+    qaoa = QAOA(sampler=sampler, optimizer=COBYLA(maxiter=maxiter), reps=reps)
     optimizer = MinimumEigenOptimizer(qaoa)
     result = optimizer.solve(qp)
 
@@ -90,6 +105,7 @@ def solve_qaoa(qp, tickers: list, reps: int = 1, shots: int = 1024, backend_name
             "backend": backend_name,
             "reps": reps,
             "shots": shots,
+            "maxiter": maxiter,
             **gate_info,
         },
     }

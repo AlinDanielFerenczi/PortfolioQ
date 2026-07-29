@@ -3,6 +3,48 @@ import pandas as pd
 from qiskit_optimization import QuadraticProgram
 from qiskit_optimization.converters import QuadraticProgramToQubo
 
+
+def fetch_prices(tickers: list, lookback_days: int = 30, retries: int = 3) -> dict:
+    import time
+    import yfinance as yf
+
+    data = None
+    last_error = None
+    for attempt in range(retries):
+        try:
+            downloaded = yf.download(
+                tickers, period=f"{lookback_days}d", interval="1d", auto_adjust=True, progress=False
+            )["Close"]
+        except Exception as e:
+            last_error = e
+            downloaded = None
+
+        if downloaded is not None:
+            if isinstance(downloaded, pd.Series):
+                downloaded = downloaded.to_frame(name=tickers[0])
+            downloaded = downloaded.dropna()
+            if not downloaded.empty:
+                data = downloaded
+                break
+
+        if attempt < retries - 1:
+            time.sleep(1.5 * (attempt + 1))
+
+    if data is None:
+        detail = f": {last_error}" if last_error else " (empty response, possibly rate-limited)"
+        raise ValueError(f"yfinance returned no price data for {tickers} after {retries} attempts{detail}")
+
+    missing = [t for t in tickers if t not in data.columns]
+    if missing:
+        raise ValueError(f"yfinance returned no price data for: {missing}")
+    if len(data) < 2:
+        raise ValueError(
+            f"yfinance returned only {len(data)} trading day(s) for {tickers}; "
+            "need at least 2 to compute returns. Try a larger lookback_days."
+        )
+    return {t: data[t].tolist() for t in tickers}
+
+
 def prices_to_returns_and_cov(prices: dict):
     df = pd.DataFrame(prices)
     pct = df.pct_change().dropna()

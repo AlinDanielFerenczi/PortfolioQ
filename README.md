@@ -42,7 +42,8 @@ optima... run it a few times and keep the best, or increase `reps`.
   a greedy heuristic (the "what we'd run in production today" comparison).
 - `qaoa_solver.py` — penalty-method QAOA: builds the circuit from the QUBO's Ising Hamiltonian, runs it via `qiskit_algorithms.QAOA` `MinimumEigenOptimizer`, and reports circuit metadata (total gates, two-qubit gate count, depth) alongside the result so you can sanity-check against your hardware's real gate budget (order of a few thousand two-qubit gates on current 156-qubit devices).
 - `xy_mixer_solver.py` — **constraint-preserving QAOA**: Dicke-state initialization XY-mixer, so the circuit only ever explores the feasible K-of-N subspace, no penalty-term tuning needed. See "Constraint handling" below.
-- `main.py` — endpoints: `/optimize/classical`, `/optimize/qaoa` (penalty method), `/optimize/qaoa-xy` (Dicke/XY-mixer), `/optimize/compare-all` (all three methods, with each QAOA variant's % of the true optimum).
+- `main.py` — endpoints: `/optimize/classical`, `/optimize/qaoa` (penalty method), `/optimize/qaoa-xy` (Dicke/XY-mixer), `/optimize/compare-all` (all three methods, with each QAOA variant's % of the true optimum), plus `/submit` + `/jobs/{id}` async variants of the three QAOA/compare endpoints.
+- `jobs.py` — minimal in-memory background job runner backing the `/submit` + `/jobs/{id}` endpoints (thread pool, no persistence — see "Async jobs" below).
 
 ## Setup
 
@@ -62,13 +63,67 @@ Open `http://localhost:8000/docs` for interactive API docs.
 
 ### Running on real IBM hardware
 
+Copy `.env.example` to `.env` and fill in your credentials:
+
 ```bash
-export IBM_QUANTUM_TOKEN="your_token_here"
-export IBM_QUANTUM_INSTANCE="ibm-q/open/main"   # or your instance string
+cp .env.example .env
 ```
+
+```
+IBM_QUANTUM_TOKEN=your_ibm_cloud_api_key
+IBM_QUANTUM_INSTANCE=crn:v1:bluemix:public:quantum-computing:us-east:a/xxxxxxxx:yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy::
+```
+
+As of the 2025 IBM Quantum Platform migration, this connects via the
+`ibm_quantum_platform` channel, which uses IBM Cloud auth: `IBM_QUANTUM_TOKEN`
+is an IBM Cloud API key (from the IBM Cloud console, not the old classic
+quantum.ibm.com token), and `IBM_QUANTUM_INSTANCE` is the full CRN of your
+Quantum service instance (from quantum.cloud.ibm.com).
+
+`config.py` loads `.env` automatically via `python-dotenv`. Environment
+variables set another way (e.g. `export IBM_QUANTUM_TOKEN=...`) still work
+and take precedence if both are set.
 
 Then set `"backend"` in your request to a real device name (e.g.
 `"ibm_torino"`) instead of `"aer_simulator"`.
+
+### Async jobs (recommended for real hardware)
+
+`/optimize/qaoa` and `/optimize/qaoa-xy` run COBYLA classically, and each
+iteration submits a job to `backend` and blocks on `.result()` until it
+clears the IBM queue — by default up to `maxiter` (100) hardware round-trips
+per request. On the simulator that's instant; on real hardware the request
+can hang well past typical HTTP/client timeouts.
+
+Two ways to handle this:
+
+- Lower `maxiter` (e.g. 3-5) for an initial timing check before scaling up.
+- Use the async variants instead of blocking the connection:
+  - `POST /optimize/qaoa/submit`, `POST /optimize/qaoa-xy/submit`,
+    `POST /optimize/compare-all/submit` — same request body, returns
+    `{"job_id": ..., "status": "pending"}` immediately.
+  - `GET /jobs/{job_id}` — poll for `status` (`pending`/`running`/
+    `completed`/`failed`), `result`, or `error`.
+
+Jobs run in an in-process thread pool and are held in memory — they don't
+survive a server restart and aren't shared across multiple worker processes.
+Fine for this pilot's single-process usage; swap in a real task queue
+(Celery/RQ + Redis, etc.) before running this multi-worker or in production.
+
+## Automatic price data
+
+If a request omits both `prices` and `expected_returns`/`covariances`, all
+endpoints fetch `lookback_days` (default 30) of daily closes for `tickers`
+from `yfinance` automatically:
+
+```json
+POST /optimize/compare-all
+{
+  "tickers": ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA"],
+  "budget": 2,
+  "risk_factor": 0.5
+}
+```
 
 ## Example request
 

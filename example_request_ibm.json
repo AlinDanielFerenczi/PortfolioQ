@@ -1,0 +1,9 @@
+{
+  "tickers": ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA"],
+  "lookback_days": 30,
+  "budget": 2,
+  "risk_factor": 0.5,
+  "reps": 1,
+  "shots": 1024,
+  "backend": "ibm_kingstone"
+}

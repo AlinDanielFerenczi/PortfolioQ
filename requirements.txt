@@ -1,6 +1,7 @@
 fastapi>=0.110
 uvicorn[standard]>=0.29
 pydantic>=2.6
+python-dotenv>=1.0
 numpy>=1.26
 pandas>=2.2
 qiskit>=1.0
@@ -8,3 +9,4 @@ qiskit-aer>=0.14
 qiskit-algorithms>=0.3
 qiskit-optimization>=0.6
 qiskit-ibm-runtime>=0.23
+yfinance>=0.2

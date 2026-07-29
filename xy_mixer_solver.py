@@ -118,7 +118,7 @@ def _get_backend_and_sampler(backend_name: str):
             "or use backend='aer_simulator'."
         )
     service = QiskitRuntimeService(
-        channel="ibm_quantum", token=IBM_QUANTUM_TOKEN, instance=IBM_QUANTUM_INSTANCE
+        channel="ibm_quantum_platform", token=IBM_QUANTUM_TOKEN, instance=IBM_QUANTUM_INSTANCE
     )
     backend = service.backend(backend_name)
     return backend, SamplerV2(mode=backend)
@@ -134,6 +134,14 @@ def solve_xy_qaoa(
     topology: str = "ring",
     maxiter: int = 100,
 ):
+    min_maxiter = 2 * reps + 2
+    if maxiter < min_maxiter:
+        raise ValueError(
+            f"maxiter={maxiter} is too low for reps={reps}: COBYLA needs at least "
+            f"2*reps + 2 = {min_maxiter} function evaluations just to build its "
+            "initial simplex before it can optimize anything."
+        )
+
     n = len(tickers)
     converter = QuadraticProgramToQubo()
     qubo = converter.convert(qp)
