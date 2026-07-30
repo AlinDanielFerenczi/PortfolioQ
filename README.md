@@ -110,6 +110,46 @@ survive a server restart and aren't shared across multiple worker processes.
 Fine for this pilot's single-process usage; swap in a real task queue
 (Celery/RQ + Redis, etc.) before running this multi-worker or in production.
 
+## Frontend
+
+A React (Vite) UI lives in [`frontend/`](frontend/) — builds requests
+through a form instead of hand-written JSON, and renders results including
+the classical vs. penalty-QAOA vs. XY-mixer-QAOA comparison charts. See
+[`frontend/README.md`](frontend/README.md) for details.
+
+**Run both servers with one command**, from the repo root:
+
+```bash
+npm install   # one-time; also installs frontend/ deps via postinstall
+npm run dev   # backend on :8000 + frontend on :5173, colored/prefixed logs
+```
+
+Requires the Python venv to already be set up (see Setup above) — `npm run
+dev` runs `venv/Scripts/uvicorn`/`venv/bin/uvicorn` directly, it doesn't
+create the venv for you.
+
+Stop everything with:
+
+```bash
+npm run stop
+```
+
+(Plain Ctrl+C also works in a real terminal. `npm run stop` exists as a
+force-cleanup fallback: `uvicorn --reload` runs a watcher that respawns a
+worker process, and on Windows a killed wrapper doesn't always cascade-kill
+that worker — `npm run stop` finds whatever's actually bound to :8000/:5173
+right now and kills that process tree directly, so it recovers even if a
+previous run was interrupted uncleanly.)
+
+Or run them separately in two terminals if you'd rather:
+
+```bash
+uvicorn main:app --reload                    # backend, port 8000
+cd frontend && npm install && npm run dev    # frontend, port 5173
+```
+
+`main.py` already allows CORS from `localhost:5173`/`4173` for this.
+
 ## Automatic price data
 
 If a request omits both `prices` and `expected_returns`/`covariances`, all

@@ -1,0 +1,14 @@
+{
+  "name": "portfolioq",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Runs the FastAPI backend and Vite frontend together for local development.",
+  "scripts": {
+    "dev": "concurrently -k -n backend,frontend -c blue,green \"node scripts/run-backend.js\" \"node scripts/run-frontend.js\"",
+    "stop": "node scripts/stop.js",
+    "postinstall": "npm install --prefix frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}

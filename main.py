@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from schemas import OptimizeRequest, OptimizeResult, CompareAllResponse, JobSubmitted, JobStatus
@@ -21,6 +22,17 @@ app = FastAPI(
         "See README for realistic scale expectations (aim for 10-30 assets, not 100+)."
     ),
     version="0.1.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",  # vite preview
+    ],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
