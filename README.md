@@ -209,3 +209,7 @@ percentage of the optimal objective's magnitude.
    the XY-mixer, since noise (not the algorithm) is what breaks the
    Hamming-weight preservation there, that gap is itself a meaningful
    data point.
+
+## More free quantum resources
+
+[More free quantum resources](https://freequantumcomputing.com)
